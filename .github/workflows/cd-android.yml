@@ -1,0 +1,137 @@
+name: CD Android
+
+on:
+  workflow_dispatch:
+    inputs:
+      deploy_to_play:
+        description: "Deploy to Google Play Internal track"
+        required: false
+        type: boolean
+        default: false
+  push:
+    tags:
+      - 'v*'
+
+concurrency:
+  group: cd-android-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build_release:
+    name: Build Android Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Validate Android signing secrets
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          missing=0
+          for secret_name in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_PASSWORD ANDROID_KEY_ALIAS; do
+            if [ -z "${!secret_name}" ]; then
+              echo "::error::Missing required secret: ${secret_name}"
+              missing=1
+            fi
+          done
+
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+
+      - name: Restore Android release keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          mkdir -p android/keystore
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/keystore/upload-keystore.jks
+
+      - name: Create key.properties
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          cat > android/key.properties <<EOL
+          storePassword=$ANDROID_KEYSTORE_PASSWORD
+          keyPassword=$ANDROID_KEY_PASSWORD
+          keyAlias=$ANDROID_KEY_ALIAS
+          storeFile=keystore/upload-keystore.jks
+          EOL
+
+      - name: Build AAB
+        run: flutter build appbundle --release
+
+      - name: Build APK
+        run: flutter build apk --release
+
+      - name: Upload AAB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-aab
+          path: build/app/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+
+  deploy_play_internal:
+    name: Deploy to Play Internal
+    needs: build_release
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.event.inputs.deploy_to_play == 'true' &&
+      secrets.PLAY_SERVICE_ACCOUNT_JSON != ''
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download AAB artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: app-release-aab
+          path: build/app/outputs/bundle/release
+
+      - name: Write Play service account json
+        env:
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          mkdir -p android
+          echo "$PLAY_SERVICE_ACCOUNT_JSON" > android/play-service-account.json
+
+      - name: Upload to Google Play Internal
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJson: android/play-service-account.json
+          packageName: com.shuhrat.qrtools
+          releaseFiles: build/app/outputs/bundle/release/app-release.aab
+          track: internal
+          status: completed
+          inAppUpdatePriority: 2
