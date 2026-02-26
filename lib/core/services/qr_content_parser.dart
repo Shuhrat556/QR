@@ -11,6 +11,11 @@ class DefaultQrContentParser implements QrContentParser {
   static final RegExp _emailRegex = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
   static final RegExp _phoneRegex = RegExp(r'^\+?[0-9()\-\s]{5,}$');
   static final RegExp _wifiSsidRegex = RegExp(r'S:([^;]*)');
+  static final RegExp _smsRegex = RegExp(r'^smsto:(.*)$', caseSensitive: false);
+  static final RegExp _geoRegex = RegExp(
+    r'^geo:([-0-9.]+),([-0-9.]+)(\?.*)?$',
+    caseSensitive: false,
+  );
 
   @override
   ParsedResult parse(String rawValue) {
@@ -32,6 +37,51 @@ class DefaultQrContentParser implements QrContentParser {
         type: ParsedContentType.wifi,
         rawValue: value,
         displayValue: display,
+      );
+    }
+
+    if (value.toUpperCase().startsWith('BEGIN:VCARD')) {
+      final display = _extractVcardName(value) ?? value;
+      return ParsedResult(
+        type: ParsedContentType.contact,
+        rawValue: value,
+        displayValue: display,
+      );
+    }
+
+    if (value.toUpperCase().startsWith('BEGIN:VEVENT')) {
+      final title = _extractVeventTitle(value) ?? value;
+      return ParsedResult(
+        type: ParsedContentType.calendar,
+        rawValue: value,
+        displayValue: title,
+      );
+    }
+
+    final smsMatch = _smsRegex.firstMatch(value);
+    if (smsMatch != null) {
+      final payload = smsMatch.group(1) ?? '';
+      final parts = payload.split(':');
+      final number = parts.firstOrNull?.trim() ?? '';
+      final message = parts.length > 1 ? parts.sublist(1).join(':').trim() : '';
+      final smsUri = Uri.parse(
+        'sms:$number${message.isEmpty ? '' : '?body=${Uri.encodeComponent(message)}'}',
+      );
+      return ParsedResult(
+        type: ParsedContentType.sms,
+        rawValue: value,
+        displayValue: number.isEmpty ? value : number,
+        primaryActionUri: smsUri,
+      );
+    }
+
+    final geoMatch = _geoRegex.firstMatch(value);
+    if (geoMatch != null) {
+      return ParsedResult(
+        type: ParsedContentType.geo,
+        rawValue: value,
+        displayValue: '${geoMatch.group(1)}, ${geoMatch.group(2)}',
+        primaryActionUri: Uri.tryParse(value),
       );
     }
 
@@ -92,6 +142,28 @@ class DefaultQrContentParser implements QrContentParser {
       rawValue: value,
       displayValue: value,
     );
+  }
+
+  String? _extractVcardName(String value) {
+    final lines = value.split(RegExp(r'\r?\n'));
+    for (final line in lines) {
+      final upper = line.toUpperCase();
+      if (upper.startsWith('FN:')) {
+        return line.substring(3).trim();
+      }
+    }
+    return null;
+  }
+
+  String? _extractVeventTitle(String value) {
+    final lines = value.split(RegExp(r'\r?\n'));
+    for (final line in lines) {
+      final upper = line.toUpperCase();
+      if (upper.startsWith('SUMMARY:')) {
+        return line.substring(8).trim();
+      }
+    }
+    return null;
   }
 
   bool _looksLikeUrl(String value) {

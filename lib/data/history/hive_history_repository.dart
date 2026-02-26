@@ -8,8 +8,7 @@ class HiveHistoryRepository implements HistoryRepository {
     Future<void> Function()? initializer,
     Future<Box<dynamic>> Function(String boxName)? boxOpener,
   }) : _initializer = initializer ?? Hive.initFlutter,
-       _boxOpener =
-           boxOpener ?? ((boxName) => Hive.openBox<dynamic>(boxName));
+       _boxOpener = boxOpener ?? ((boxName) => Hive.openBox<dynamic>(boxName));
 
   final Future<void> Function() _initializer;
   final Future<Box<dynamic>> Function(String boxName) _boxOpener;
@@ -43,6 +42,16 @@ class HiveHistoryRepository implements HistoryRepository {
   @override
   Future<void> upsert(HistoryItem item) async {
     await _historyBox.put(item.id, item.toMap());
+  }
+
+  @override
+  Future<void> setFavorite(String id, bool isFavorite) async {
+    final existing = _historyBox.get(id);
+    if (existing is! Map) {
+      return;
+    }
+    final item = HistoryItem.fromMap(existing).copyWith(isFavorite: isFavorite);
+    await _historyBox.put(id, item.toMap());
   }
 
   @override

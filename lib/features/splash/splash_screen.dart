@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:qr_scanner_generator/l10n/app_localizations.dart';
 import 'package:qr_scanner_generator/core/constants/app_constants.dart';
 import 'package:qr_scanner_generator/core/services/history_repository.dart';
+import 'package:qr_scanner_generator/core/services/my_qr_profile_repository.dart';
 import 'package:qr_scanner_generator/features/history/cubit/history_cubit.dart';
 import 'package:qr_scanner_generator/features/home/home_shell.dart';
 
@@ -21,6 +23,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Future<void> _initialize() async {
     final historyRepository = context.read<HistoryRepository>();
+    final myQrRepository = context.read<MyQrProfileRepository>();
     final historyCubit = context.read<HistoryCubit>();
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
@@ -28,14 +31,14 @@ class _SplashScreenState extends State<SplashScreen> {
 
     try {
       await historyRepository.init();
+      await myQrRepository.init();
       await historyCubit.load();
     } catch (_) {
       if (!mounted) {
         return;
       }
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Failed to initialize local storage.')),
-      );
+      final l10n = AppLocalizations.of(context)!;
+      messenger.showSnackBar(SnackBar(content: Text(l10n.failedLoadHistory)));
     }
 
     final elapsed = DateTime.now().difference(startedAt);
@@ -55,7 +58,8 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    final l10n = AppLocalizations.of(context)!;
+    return Scaffold(
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -67,7 +71,7 @@ class _SplashScreenState extends State<SplashScreen> {
               style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 8),
-            Text('Create, Scan & Share'),
+            Text(l10n.taglineCreateScanShare),
           ],
         ),
       ),

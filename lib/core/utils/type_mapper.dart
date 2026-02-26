@@ -5,7 +5,12 @@ QrInputType mapParsedTypeToInputType(ParsedContentType type) {
     ParsedContentType.url => QrInputType.url,
     ParsedContentType.phone => QrInputType.phone,
     ParsedContentType.email => QrInputType.email,
+    ParsedContentType.sms => QrInputType.sms,
+    ParsedContentType.geo => QrInputType.geo,
+    ParsedContentType.calendar => QrInputType.calendar,
+    ParsedContentType.contact => QrInputType.contact,
     ParsedContentType.wifi => QrInputType.wifi,
-    ParsedContentType.plainText || ParsedContentType.unknown => QrInputType.text,
+    ParsedContentType.plainText ||
+    ParsedContentType.unknown => QrInputType.text,
   };
 }

@@ -43,10 +43,7 @@ class HomeTabScreen extends StatelessWidget {
             ),
             const Expanded(
               child: TabBarView(
-                children: <Widget>[
-                  GenerateScreen(),
-                  ScanScreen(),
-                ],
+                children: <Widget>[GenerateScreen(), ScanScreen()],
               ),
             ),
           ],

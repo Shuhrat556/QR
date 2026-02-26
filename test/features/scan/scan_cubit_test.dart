@@ -20,7 +20,11 @@ class _FakePermissionService implements PermissionService {
 
 void main() {
   test('blocks duplicate scan values within 2 seconds', () {
-    final cubit = ScanCubit(permissionService: _FakePermissionService(status: PermissionStatus.granted));
+    final cubit = ScanCubit(
+      permissionService: _FakePermissionService(
+        status: PermissionStatus.granted,
+      ),
+    );
 
     final firstAccepted = cubit.canProcessValue('ABC123', 1000);
     final secondAccepted = cubit.canProcessValue('ABC123', 2500);

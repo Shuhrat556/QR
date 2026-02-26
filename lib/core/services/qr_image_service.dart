@@ -38,14 +38,15 @@ class QrImageServiceImpl implements QrImageService {
 
   @override
   Future<void> saveToGallery(Uint8List pngBytes, String fileName) async {
-    await Gal.putImageBytes(
-      pngBytes,
-      name: fileName.replaceAll('.png', ''),
-    );
+    await Gal.putImageBytes(pngBytes, name: fileName.replaceAll('.png', ''));
   }
 
   @override
-  Future<void> sharePng(Uint8List pngBytes, String fileName, {String? text}) async {
+  Future<void> sharePng(
+    Uint8List pngBytes,
+    String fileName, {
+    String? text,
+  }) async {
     final tempDirectory = await getTemporaryDirectory();
     final outputPath = '${tempDirectory.path}/$fileName';
     final file = File(outputPath);

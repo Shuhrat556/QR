@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:qr_scanner_generator/l10n/app_localizations.dart';
 import 'package:qr_scanner_generator/core/services/qr_content_parser.dart';
 import 'package:qr_scanner_generator/features/result/result_screen.dart';
 
 void main() {
   Widget buildApp(String rawValue) {
     return MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: RepositoryProvider<QrContentParser>.value(
         value: DefaultQrContentParser(),
         child: ResultScreen(rawValue: rawValue),

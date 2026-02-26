@@ -28,36 +28,39 @@ void main() {
     }
   });
 
-  test('upsert, fetch, delete and clear operations work with descending order', () async {
-    final older = HistoryItem(
-      id: '1',
-      source: HistorySource.generated,
-      inputType: QrInputType.url,
-      rawValue: 'https://old.example',
-      displayValue: 'old',
-      createdAtEpochMs: 100,
-    );
-    final newer = HistoryItem(
-      id: '2',
-      source: HistorySource.scanned,
-      inputType: QrInputType.text,
-      rawValue: 'new',
-      displayValue: 'new',
-      createdAtEpochMs: 200,
-    );
+  test(
+    'upsert, fetch, delete and clear operations work with descending order',
+    () async {
+      final older = HistoryItem(
+        id: '1',
+        source: HistorySource.generated,
+        inputType: QrInputType.url,
+        rawValue: 'https://old.example',
+        displayValue: 'old',
+        createdAtEpochMs: 100,
+      );
+      final newer = HistoryItem(
+        id: '2',
+        source: HistorySource.scanned,
+        inputType: QrInputType.text,
+        rawValue: 'new',
+        displayValue: 'new',
+        createdAtEpochMs: 200,
+      );
 
-    await repository.upsert(older);
-    await repository.upsert(newer);
+      await repository.upsert(older);
+      await repository.upsert(newer);
 
-    final items = await repository.fetchAll();
-    expect(items.map((item) => item.id).toList(), <String>['2', '1']);
+      final items = await repository.fetchAll();
+      expect(items.map((item) => item.id).toList(), <String>['2', '1']);
 
-    await repository.deleteById('2');
-    final afterDelete = await repository.fetchAll();
-    expect(afterDelete.map((item) => item.id).toList(), <String>['1']);
+      await repository.deleteById('2');
+      final afterDelete = await repository.fetchAll();
+      expect(afterDelete.map((item) => item.id).toList(), <String>['1']);
 
-    await repository.clearAll();
-    final afterClear = await repository.fetchAll();
-    expect(afterClear, isEmpty);
-  });
+      await repository.clearAll();
+      final afterClear = await repository.fetchAll();
+      expect(afterClear, isEmpty);
+    },
+  );
 }

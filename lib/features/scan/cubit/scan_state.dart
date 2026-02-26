@@ -5,12 +5,14 @@ class ScanState extends Equatable {
   const ScanState({
     required this.permissionStatus,
     required this.torchEnabled,
+    this.startupChecked = false,
     this.lastRawValue,
     this.lastScanEpochMs = 0,
   });
 
   final PermissionStatus permissionStatus;
   final bool torchEnabled;
+  final bool startupChecked;
   final String? lastRawValue;
   final int lastScanEpochMs;
 
@@ -21,6 +23,7 @@ class ScanState extends Equatable {
   ScanState copyWith({
     PermissionStatus? permissionStatus,
     bool? torchEnabled,
+    bool? startupChecked,
     String? lastRawValue,
     int? lastScanEpochMs,
     bool clearLastRawValue = false,
@@ -28,7 +31,10 @@ class ScanState extends Equatable {
     return ScanState(
       permissionStatus: permissionStatus ?? this.permissionStatus,
       torchEnabled: torchEnabled ?? this.torchEnabled,
-      lastRawValue: clearLastRawValue ? null : (lastRawValue ?? this.lastRawValue),
+      startupChecked: startupChecked ?? this.startupChecked,
+      lastRawValue: clearLastRawValue
+          ? null
+          : (lastRawValue ?? this.lastRawValue),
       lastScanEpochMs: lastScanEpochMs ?? this.lastScanEpochMs,
     );
   }
@@ -37,6 +43,7 @@ class ScanState extends Equatable {
   List<Object?> get props => <Object?>[
     permissionStatus,
     torchEnabled,
+    startupChecked,
     lastRawValue,
     lastScanEpochMs,
   ];

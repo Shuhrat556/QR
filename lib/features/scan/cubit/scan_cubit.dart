@@ -21,6 +21,23 @@ class ScanCubit extends Cubit<ScanState> {
     emit(state.copyWith(permissionStatus: status));
   }
 
+  Future<void> ensurePermissionOnStartup() async {
+    if (state.startupChecked) {
+      return;
+    }
+
+    final status = await _permissionService.cameraStatus();
+    if (status.isDenied) {
+      final requestedStatus = await _permissionService.requestCamera();
+      emit(
+        state.copyWith(permissionStatus: requestedStatus, startupChecked: true),
+      );
+      return;
+    }
+
+    emit(state.copyWith(permissionStatus: status, startupChecked: true));
+  }
+
   Future<void> requestPermission() async {
     final status = await _permissionService.requestCamera();
     emit(state.copyWith(permissionStatus: status));
@@ -48,12 +65,7 @@ class ScanCubit extends Cubit<ScanState> {
       return false;
     }
 
-    emit(
-      state.copyWith(
-        lastRawValue: normalized,
-        lastScanEpochMs: nowEpochMs,
-      ),
-    );
+    emit(state.copyWith(lastRawValue: normalized, lastScanEpochMs: nowEpochMs));
     return true;
   }
 

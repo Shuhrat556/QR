@@ -35,6 +35,11 @@ class HistoryCubit extends Cubit<HistoryState> {
     await load();
   }
 
+  Future<void> setFavorite(String id, bool isFavorite) async {
+    await _repository.setFavorite(id, isFavorite);
+    await load();
+  }
+
   Future<void> clearAll() async {
     await _repository.clearAll();
     await load();

@@ -15,5 +15,10 @@ class ParsedResult extends Equatable {
   final Uri? primaryActionUri;
 
   @override
-  List<Object?> get props => <Object?>[type, rawValue, displayValue, primaryActionUri];
+  List<Object?> get props => <Object?>[
+    type,
+    rawValue,
+    displayValue,
+    primaryActionUri,
+  ];
 }

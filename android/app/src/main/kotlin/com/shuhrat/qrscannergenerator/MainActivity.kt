@@ -1,4 +1,4 @@
-package com.shuhrat.qrtools
+package com.shuhrat.qrscannergenerator
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -35,11 +35,17 @@ void main() {
     });
 
     test('builds url payload', () {
-      expect(build(type: QrInputType.url, url: 'https://example.com'), 'https://example.com');
+      expect(
+        build(type: QrInputType.url, url: 'https://example.com'),
+        'https://example.com',
+      );
     });
 
     test('builds tel payload', () {
-      expect(build(type: QrInputType.phone, phone: '+1 202 555 1111'), 'tel:+12025551111');
+      expect(
+        build(type: QrInputType.phone, phone: '+1 202 555 1111'),
+        'tel:+12025551111',
+      );
     });
 
     test('builds mailto payload with query params', () {

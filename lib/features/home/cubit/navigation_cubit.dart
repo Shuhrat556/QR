@@ -1,12 +1,13 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:qr_scanner_generator/core/models/enums.dart';
 
-class NavigationCubit extends Cubit<int> {
-  NavigationCubit() : super(0);
+class NavigationCubit extends Cubit<AppSection> {
+  NavigationCubit() : super(AppSection.scan);
 
-  void setIndex(int index) {
-    if (index == state) {
+  void setSection(AppSection section) {
+    if (section == state) {
       return;
     }
-    emit(index);
+    emit(section);
   }
 }

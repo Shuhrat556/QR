@@ -2,11 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:qr_scanner_generator/l10n/app_localizations.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qr_scanner_generator/core/models/enums.dart';
 import 'package:qr_scanner_generator/core/models/history_item.dart';
 import 'package:qr_scanner_generator/core/services/history_repository.dart';
 import 'package:qr_scanner_generator/core/services/qr_content_parser.dart';
+import 'package:qr_scanner_generator/core/services/scan_image_service.dart';
 import 'package:qr_scanner_generator/core/utils/type_mapper.dart';
 import 'package:qr_scanner_generator/features/history/cubit/history_cubit.dart';
 import 'package:qr_scanner_generator/features/result/result_screen.dart';
@@ -15,7 +17,9 @@ import 'package:qr_scanner_generator/features/scan/cubit/scan_state.dart';
 import 'package:uuid/uuid.dart';
 
 class ScanScreen extends StatefulWidget {
-  const ScanScreen({super.key});
+  const ScanScreen({super.key, this.onOpenDrawer});
+
+  final VoidCallback? onOpenDrawer;
 
   @override
   State<ScanScreen> createState() => _ScanScreenState();
@@ -24,6 +28,7 @@ class ScanScreen extends StatefulWidget {
 class _ScanScreenState extends State<ScanScreen> {
   late final MobileScannerController _controller;
   bool _cameraRunning = false;
+  double _zoomScale = 1;
 
   @override
   void initState() {
@@ -33,7 +38,7 @@ class _ScanScreenState extends State<ScanScreen> {
       formats: const <BarcodeFormat>[BarcodeFormat.qrCode],
       detectionSpeed: DetectionSpeed.normal,
     );
-    unawaited(context.read<ScanCubit>().refreshPermission());
+    unawaited(context.read<ScanCubit>().ensurePermissionOnStartup());
   }
 
   @override
@@ -44,6 +49,8 @@ class _ScanScreenState extends State<ScanScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return SafeArea(
       child: BlocConsumer<ScanCubit, ScanState>(
         listener: (context, state) {
@@ -57,7 +64,8 @@ class _ScanScreenState extends State<ScanScreen> {
           if (!state.hasPermission) {
             return _PermissionStateView(
               isPermanentlyDenied: state.isPermanentlyDenied,
-              onRequestPermission: () => context.read<ScanCubit>().requestPermission(),
+              onRequestPermission: () =>
+                  context.read<ScanCubit>().requestPermission(),
               onOpenSettings: () => context.read<ScanCubit>().openSettings(),
             );
           }
@@ -79,7 +87,10 @@ class _ScanScreenState extends State<ScanScreen> {
                   }
 
                   final now = DateTime.now().millisecondsSinceEpoch;
-                  if (!context.read<ScanCubit>().canProcessValue(rawValue, now)) {
+                  if (!context.read<ScanCubit>().canProcessValue(
+                    rawValue,
+                    now,
+                  )) {
                     return;
                   }
 
@@ -88,11 +99,26 @@ class _ScanScreenState extends State<ScanScreen> {
               ),
               Positioned(
                 top: 16,
+                left: 16,
+                child: _RoundButton(
+                  icon: Icons.menu,
+                  onPressed: widget.onOpenDrawer,
+                ),
+              ),
+              Positioned(
+                top: 16,
                 right: 16,
                 child: Row(
                   children: <Widget>[
                     _RoundButton(
-                      icon: state.torchEnabled ? Icons.flash_on : Icons.flash_off,
+                      icon: Icons.photo_library,
+                      onPressed: _scanFromImage,
+                    ),
+                    const SizedBox(width: 8),
+                    _RoundButton(
+                      icon: state.torchEnabled
+                          ? Icons.flash_on
+                          : Icons.flash_off,
                       onPressed: () async {
                         final scanCubit = context.read<ScanCubit>();
                         await _controller.toggleTorch();
@@ -102,7 +128,7 @@ class _ScanScreenState extends State<ScanScreen> {
                         scanCubit.setTorchEnabled(!state.torchEnabled);
                       },
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 8),
                     _RoundButton(
                       icon: Icons.cameraswitch,
                       onPressed: () => _controller.switchCamera(),
@@ -113,19 +139,56 @@ class _ScanScreenState extends State<ScanScreen> {
               Align(
                 alignment: Alignment.bottomCenter,
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: Colors.black87,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Padding(
-                      padding: EdgeInsets.all(12),
-                      child: Text(
-                        'Point camera at a QR code',
-                        style: TextStyle(color: Colors.white),
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: Colors.black87,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          child: Text(
+                            l10n.scanHint,
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 10),
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: Colors.black87,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Row(
+                            children: <Widget>[
+                              const Icon(Icons.zoom_in, color: Colors.white),
+                              Expanded(
+                                child: Slider(
+                                  value: _zoomScale,
+                                  min: 0,
+                                  max: 1,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _zoomScale = value;
+                                    });
+                                    _controller.setZoomScale(value);
+                                  },
+                                ),
+                              ),
+                              const Icon(Icons.zoom_out, color: Colors.white),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -144,11 +207,13 @@ class _ScanScreenState extends State<ScanScreen> {
     try {
       await _controller.start();
       _cameraRunning = true;
+      await _controller.setZoomScale(_zoomScale);
     } catch (_) {
       if (!mounted) {
         return;
       }
-      _showSnackBar('Failed to start camera.');
+      final l10n = AppLocalizations.of(context)!;
+      _showSnackBar(l10n.failedStartCamera);
     }
   }
 
@@ -166,7 +231,36 @@ class _ScanScreenState extends State<ScanScreen> {
     }
   }
 
+  Future<void> _scanFromImage() async {
+    final l10n = AppLocalizations.of(context)!;
+    final scanImageService = context.read<ScanImageService>();
+
+    await _stopScanner();
+
+    try {
+      final rawValue = await scanImageService.pickAndScanQr();
+      if (!mounted) {
+        return;
+      }
+
+      if (rawValue == null || rawValue.isEmpty) {
+        _showSnackBar(l10n.noQrFoundInImage);
+        await _startScanner();
+        return;
+      }
+
+      await _handleDetectedValue(rawValue);
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      _showSnackBar(l10n.failedReadImage);
+      await _startScanner();
+    }
+  }
+
   Future<void> _handleDetectedValue(String rawValue) async {
+    final l10n = AppLocalizations.of(context)!;
     final parser = context.read<QrContentParser>();
     final historyRepository = context.read<HistoryRepository>();
     final historyCubit = context.read<HistoryCubit>();
@@ -205,7 +299,7 @@ class _ScanScreenState extends State<ScanScreen> {
       if (!mounted) {
         return;
       }
-      _showSnackBar('Scan handling failed: $error');
+      _showSnackBar('${l10n.scanHandlingFailed}: $error');
     } finally {
       if (mounted) {
         scanCubit.resetDetectionLock();
@@ -215,7 +309,9 @@ class _ScanScreenState extends State<ScanScreen> {
   }
 
   void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
@@ -232,6 +328,8 @@ class _PermissionStateView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -240,20 +338,17 @@ class _PermissionStateView extends StatelessWidget {
           children: <Widget>[
             const Icon(Icons.camera_alt_outlined, size: 56),
             const SizedBox(height: 12),
-            const Text(
-              'Camera permission is required to scan QR codes.',
-              textAlign: TextAlign.center,
-            ),
+            Text(l10n.cameraPermissionRequired, textAlign: TextAlign.center),
             const SizedBox(height: 16),
             FilledButton(
               onPressed: onRequestPermission,
-              child: const Text('Grant Camera Permission'),
+              child: Text(l10n.grantCameraPermission),
             ),
             if (isPermanentlyDenied) ...<Widget>[
               const SizedBox(height: 8),
               OutlinedButton(
                 onPressed: () => onOpenSettings(),
-                child: const Text('Open Settings'),
+                child: Text(l10n.openSettings),
               ),
             ],
           ],
@@ -264,10 +359,10 @@ class _PermissionStateView extends StatelessWidget {
 }
 
 class _RoundButton extends StatelessWidget {
-  const _RoundButton({required this.icon, required this.onPressed});
+  const _RoundButton({required this.icon, this.onPressed});
 
   final IconData icon;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {

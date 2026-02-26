@@ -6,10 +6,11 @@ import 'package:qr_scanner_generator/core/models/history_item.dart';
 import 'package:qr_scanner_generator/core/services/history_repository.dart';
 import 'package:qr_scanner_generator/features/history/cubit/history_cubit.dart';
 import 'package:qr_scanner_generator/features/history/history_screen.dart';
+import 'package:qr_scanner_generator/l10n/app_localizations.dart';
 
 class _FakeHistoryRepository implements HistoryRepository {
   _FakeHistoryRepository(List<HistoryItem> initialItems)
-      : _items = List<HistoryItem>.from(initialItems);
+    : _items = List<HistoryItem>.from(initialItems);
 
   final List<HistoryItem> _items;
 
@@ -37,10 +38,21 @@ class _FakeHistoryRepository implements HistoryRepository {
     _items.removeWhere((entry) => entry.id == item.id);
     _items.add(item);
   }
+
+  @override
+  Future<void> setFavorite(String id, bool isFavorite) async {
+    final index = _items.indexWhere((item) => item.id == id);
+    if (index < 0) {
+      return;
+    }
+    _items[index] = _items[index].copyWith(isFavorite: isFavorite);
+  }
 }
 
 void main() {
-  testWidgets('renders history and clears all items via confirmation', (tester) async {
+  testWidgets('renders history and clears all items via confirmation', (
+    tester,
+  ) async {
     final repository = _FakeHistoryRepository(<HistoryItem>[
       const HistoryItem(
         id: '1',
@@ -62,6 +74,8 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: BlocProvider<HistoryCubit>(
           create: (_) => HistoryCubit(repository: repository),
           child: const Scaffold(body: HistoryScreen()),

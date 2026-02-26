@@ -1,7 +1,7 @@
 <<<<<<< HEAD
 # QR
 =======
-# QR Tools (Flutter)
+# QR Scanner & Generator (Flutter)
 
 Android-first QR app with:
 - QR generation (Text, URL, Phone, Email, WiFi)

@@ -9,6 +9,7 @@ class HistoryItem extends Equatable {
     required this.rawValue,
     required this.displayValue,
     required this.createdAtEpochMs,
+    this.isFavorite = false,
   });
 
   final String id;
@@ -17,6 +18,7 @@ class HistoryItem extends Equatable {
   final String rawValue;
   final String displayValue;
   final int createdAtEpochMs;
+  final bool isFavorite;
 
   HistoryItem copyWith({
     String? id,
@@ -25,6 +27,7 @@ class HistoryItem extends Equatable {
     String? rawValue,
     String? displayValue,
     int? createdAtEpochMs,
+    bool? isFavorite,
   }) {
     return HistoryItem(
       id: id ?? this.id,
@@ -33,6 +36,7 @@ class HistoryItem extends Equatable {
       rawValue: rawValue ?? this.rawValue,
       displayValue: displayValue ?? this.displayValue,
       createdAtEpochMs: createdAtEpochMs ?? this.createdAtEpochMs,
+      isFavorite: isFavorite ?? this.isFavorite,
     );
   }
 
@@ -44,6 +48,7 @@ class HistoryItem extends Equatable {
       'rawValue': rawValue,
       'displayValue': displayValue,
       'createdAtEpochMs': createdAtEpochMs,
+      'isFavorite': isFavorite,
     };
   }
 
@@ -64,6 +69,7 @@ class HistoryItem extends Equatable {
       rawValue: map['rawValue'] as String? ?? '',
       displayValue: map['displayValue'] as String? ?? '',
       createdAtEpochMs: (map['createdAtEpochMs'] as num?)?.toInt() ?? 0,
+      isFavorite: map['isFavorite'] as bool? ?? false,
     );
   }
 
@@ -75,5 +81,6 @@ class HistoryItem extends Equatable {
     rawValue,
     displayValue,
     createdAtEpochMs,
+    isFavorite,
   ];
 }
