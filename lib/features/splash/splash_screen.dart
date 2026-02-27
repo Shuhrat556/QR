@@ -18,15 +18,18 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    _initialize();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      _initialize();
+    });
   }
 
   Future<void> _initialize() async {
     final historyRepository = context.read<HistoryRepository>();
     final myQrRepository = context.read<MyQrProfileRepository>();
     final historyCubit = context.read<HistoryCubit>();
-    final messenger = ScaffoldMessenger.of(context);
-    final navigator = Navigator.of(context);
     final startedAt = DateTime.now();
 
     try {
@@ -38,7 +41,9 @@ class _SplashScreenState extends State<SplashScreen> {
         return;
       }
       final l10n = AppLocalizations.of(context)!;
-      messenger.showSnackBar(SnackBar(content: Text(l10n.failedLoadHistory)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.failedLoadHistory)));
     }
 
     final elapsed = DateTime.now().difference(startedAt);
@@ -51,7 +56,7 @@ class _SplashScreenState extends State<SplashScreen> {
       return;
     }
 
-    navigator.pushReplacement(
+    Navigator.of(context).pushReplacement(
       MaterialPageRoute<void>(builder: (_) => const HomeShell()),
     );
   }

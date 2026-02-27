@@ -22,14 +22,14 @@ class ScanImageServiceImpl implements ScanImageService {
 
     final controller = MobileScannerController(
       autoStart: false,
-      formats: const <BarcodeFormat>[BarcodeFormat.qrCode],
-      detectionSpeed: DetectionSpeed.normal,
+      formats: const <BarcodeFormat>[],
+      detectionSpeed: DetectionSpeed.unrestricted,
     );
 
     try {
       final capture = await controller.analyzeImage(
         image.path,
-        formats: const <BarcodeFormat>[BarcodeFormat.qrCode],
+        formats: const <BarcodeFormat>[],
       );
       final barcodes = capture?.barcodes;
       if (barcodes == null || barcodes.isEmpty) {

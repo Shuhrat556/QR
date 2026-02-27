@@ -28,15 +28,17 @@ class ScanScreen extends StatefulWidget {
 class _ScanScreenState extends State<ScanScreen> {
   late final MobileScannerController _controller;
   bool _cameraRunning = false;
-  double _zoomScale = 1;
+  double _zoomScale = 0;
+  bool _showDetectedOverlay = false;
 
   @override
   void initState() {
     super.initState();
     _controller = MobileScannerController(
       autoStart: false,
-      formats: const <BarcodeFormat>[BarcodeFormat.qrCode],
-      detectionSpeed: DetectionSpeed.normal,
+      formats: const <BarcodeFormat>[],
+      detectionSpeed: DetectionSpeed.unrestricted,
+      autoZoom: true,
     );
     unawaited(context.read<ScanCubit>().ensurePermissionOnStartup());
   }
@@ -94,8 +96,31 @@ class _ScanScreenState extends State<ScanScreen> {
                     return;
                   }
 
+                  unawaited(_showAcceptedAnimation());
                   unawaited(_handleDetectedValue(rawValue));
                 },
+              ),
+              IgnorePointer(
+                child: AnimatedOpacity(
+                  opacity: _showDetectedOverlay ? 1 : 0,
+                  duration: const Duration(milliseconds: 180),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: Colors.green.withValues(alpha: 0.18),
+                      border: Border.all(
+                        color: Colors.lightGreenAccent,
+                        width: 4,
+                      ),
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        Icons.check_circle_rounded,
+                        color: Colors.lightGreenAccent,
+                        size: 96,
+                      ),
+                    ),
+                  ),
+                ),
               ),
               Positioned(
                 top: 16,
@@ -183,7 +208,7 @@ class _ScanScreenState extends State<ScanScreen> {
                                   },
                                 ),
                               ),
-                              const Icon(Icons.zoom_out, color: Colors.white),
+                              const Icon(Icons.zoom_in, color: Colors.white),
                             ],
                           ),
                         ),
@@ -257,6 +282,22 @@ class _ScanScreenState extends State<ScanScreen> {
       _showSnackBar(l10n.failedReadImage);
       await _startScanner();
     }
+  }
+
+  Future<void> _showAcceptedAnimation() async {
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _showDetectedOverlay = true;
+    });
+    await Future<void>.delayed(const Duration(milliseconds: 240));
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _showDetectedOverlay = false;
+    });
   }
 
   Future<void> _handleDetectedValue(String rawValue) async {

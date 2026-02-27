@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:qr_scanner_generator/l10n/app_localizations.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:qr_scanner_generator/core/models/enums.dart';
@@ -29,6 +30,9 @@ class _GenerateScreenState extends State<GenerateScreen> {
     'WEP',
     'NONE',
   ];
+  final ImagePicker _imagePicker = ImagePicker();
+  Uint8List? _embeddedLogoBytes;
+  String? _embeddedLogoName;
 
   @override
   void initState() {
@@ -111,7 +115,61 @@ class _GenerateScreenState extends State<GenerateScreen> {
                           size: 220,
                           version: QrVersions.auto,
                           gapless: true,
+                          embeddedImage: _embeddedLogoBytes == null
+                              ? null
+                              : MemoryImage(_embeddedLogoBytes!),
+                          embeddedImageStyle: const QrEmbeddedImageStyle(
+                            size: Size(42, 42),
+                          ),
                         ),
+                ),
+                const SizedBox(height: 10),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.outlineVariant,
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(10),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          'Graphic QR (logo/image in center)',
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: <Widget>[
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: _pickEmbeddedLogo,
+                                icon: const Icon(Icons.image_outlined),
+                                label: const Text('Pick logo/image'),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            OutlinedButton.icon(
+                              onPressed: _embeddedLogoBytes == null
+                                  ? null
+                                  : _clearEmbeddedLogo,
+                              icon: const Icon(Icons.delete_outline),
+                              label: const Text('Remove'),
+                            ),
+                          ],
+                        ),
+                        if (_embeddedLogoName != null) ...<Widget>[
+                          const SizedBox(height: 6),
+                          Text(
+                            _embeddedLogoName!,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 12),
                 SelectableText(
@@ -472,6 +530,35 @@ class _GenerateScreenState extends State<GenerateScreen> {
     context.read<GenerateCubit>().setMyQrVCard(profile.toVCard());
   }
 
+  Future<void> _pickEmbeddedLogo() async {
+    final file = await _imagePicker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1200,
+      maxHeight: 1200,
+    );
+
+    if (file == null || !mounted) {
+      return;
+    }
+
+    final bytes = await file.readAsBytes();
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _embeddedLogoBytes = bytes;
+      _embeddedLogoName = file.name;
+    });
+  }
+
+  void _clearEmbeddedLogo() {
+    setState(() {
+      _embeddedLogoBytes = null;
+      _embeddedLogoName = null;
+    });
+  }
+
   Future<void> _savePng(BuildContext context, GenerateState state) async {
     final l10n = AppLocalizations.of(context)!;
     final payload = state.qrPayload;
@@ -483,7 +570,10 @@ class _GenerateScreenState extends State<GenerateScreen> {
     final imageService = context.read<QrImageService>();
 
     try {
-      final bytes = await imageService.renderPng(payload);
+      final bytes = await imageService.renderPng(
+        payload,
+        embeddedImageBytes: _embeddedLogoBytes,
+      );
       await imageService.saveToGallery(bytes, fileName);
       if (!context.mounted) {
         return;
@@ -508,7 +598,10 @@ class _GenerateScreenState extends State<GenerateScreen> {
     final imageService = context.read<QrImageService>();
 
     try {
-      final bytes = await imageService.renderPng(payload);
+      final bytes = await imageService.renderPng(
+        payload,
+        embeddedImageBytes: _embeddedLogoBytes,
+      );
       await imageService.sharePng(bytes, fileName, text: payload);
     } catch (error) {
       if (!context.mounted) {
